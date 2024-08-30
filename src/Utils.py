@@ -1,11 +1,15 @@
 import csv
 import os
 import random
+import time
 
 import torch
+
 import scipy.sparse as sp
 import numpy as np
 from loguru import logger
+from sklearn.metrics import roc_auc_score
+import pandas as pd
 
 neg_label = 1
 pos_label = 0
@@ -151,3 +155,101 @@ def setup_seed(seed):
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"  # 大于CUDA 10.2 需要设置
     logger.info("seed: %d, random:%.4f, torch random:%.4f, np random:%.4f" %(seed, random.random(), torch.rand(1), np.random.rand(1)))
+    
+def dti_tokenizer(line):
+    vec = []
+    for c in line:
+        ascii = ord(c)
+        vec.append(ascii)
+    return torch.tensor(vec)
+
+def calc_mse(y_ture, y_pred): # input type is numpy
+    return float(np.mean((y_ture - y_pred)**2))
+
+def calc_cindex(y_true, scores):
+    cindex = roc_auc_score(y_true, scores)
+    return cindex
+
+def calc_mae(y_true, y_pred):    
+    return float(np.mean(np.abs(pd.Series(y_true) - pd.Series(y_pred))))
+
+def calc_mape(y_true, y_pred):
+    return float(np.mean(np.abs((y_true - y_pred) / y_true)))
+
+def calc_r2(y_true, y_pred):
+    u = np.sum((y_true - y_pred) ** 2)
+    v = np.sum((y_true - np.mean(y_true)) ** 2)
+    return float(1 - (u / v))
+
+def evaluate(y_ture, y_pred):
+    CI = calc_cindex(y_ture, y_pred)
+    MSE = calc_mse(y_ture, y_pred)
+    MAE = calc_mae(y_ture, y_pred)
+    R2 = calc_r2(y_ture, y_pred)
+    return MSE, CI, MAE, R2
+
+def calc_cindex2(y_true, scores):
+    """
+    计算C-Index（一致性指数）。
+    
+    参数：
+    y_true: 实际生存时间或风险事件发生的时间（如果是生存分析）。
+    scores: 模型的预测得分（可以是预测的生存时间或风险分数）。
+    
+    返回：
+    C-Index 值。
+    """
+    n = len(y_true)
+    assert len(scores) == n
+
+    concordant = 0
+    permissible = 0
+    
+    # 遍历所有的样本对
+    for i in range(n):
+        for j in range(i + 1, n):
+            # 样本对必须是可比较的
+            if y_true[i] != y_true[j]:
+                permissible += 1
+                # 检查模型预测的一致性
+                if (scores[i] > scores[j] and y_true[i] > y_true[j]) or \
+                   (scores[i] < scores[j] and y_true[i] < y_true[j]):
+                    concordant += 1
+                elif scores[i] == scores[j]:
+                    concordant += 0.5  # 如果得分相等，则算作0.5的一致性对
+    
+    if permissible == 0:
+        return 0  # 如果没有可比较的样本对，返回0
+
+    return concordant / permissible
+
+def save_model(model,file_name):
+    path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    torch.save(model.state_dict(), path)
+    logger.info("save %s model parameters done, %s" %(file_name, path))
+
+def load_model(model, file_name):
+    path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    if os.path.exists(path):
+        model.load_state_dict(torch.load(path))
+        model.eval()
+        logger.info("load %s model parameters done, %s." %(file_name, path))
+
+def check_model(file_name):
+    path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    if os.path.exists(path):
+        return True
+    else:
+        return False
+
+def save_metrics(metrics, file_name, columns=["Type", "MSE", "CI", "MAE", "R2"]):
+    path = f"/home/yang/sda/github/IPNET/output/csv/{file_name}_Metrics_"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
+    df = pd.DataFrame(metrics)
+    df.columns = columns
+    df.to_csv(path)
+    
+if __name__ == '__main__':
+    dataset_name = "DAVIS"
+    file_name = f"IPNet-Seq-{dataset_name}"
+    path = f"/home/yang/sda/github/IPNET/output/csv/{file_name}-Metrics-"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
+    print(path)
