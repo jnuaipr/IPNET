@@ -24,6 +24,8 @@ from loguru import logger
 import pandas as pd
 from tdc.multi_pred import DTI
 
+from Setting import base_path
+
 neg_label = 1  # false 
 pos_label = 0  # true
 
@@ -115,9 +117,7 @@ def load(name="DAVIS"):
     data_dti = DTI(name = name)
     if name in "DAVIS":
         data_dti.convert_to_log(form = 'binding')
-        # data_dti.get_data().to_csv("/home/yang/sda/github/IPNET/output/davis_log.csv")
         data_dti.binarize(threshold = 7, order = 'descending') # 7
-        # data_dti.get_data().to_csv("/home/yang/sda/github/IPNET/output/davis_bin.csv")
         raw_data = data_dti.get_data()
         raw_data = df_data_preprocess(raw_data)
         df = data_dti.balanced(oversample = False, seed = 42)
@@ -129,16 +129,23 @@ def load(name="DAVIS"):
     elif name == "BindingDB_Kd":
         data_dti.convert_to_log(form = 'binding')
         data_dti.binarize(threshold = 7.6, order = 'descending') # 7.6
+        raw_data = data_dti.get_data()
+        raw_data = df_data_preprocess(raw_data)
         df = data_dti.balanced(oversample = False, seed = 42)
         df = df_data_preprocess(df)
         sample_stat(df)
         df_split = df_fold(df)
+        df_split['raw'] = raw_data
+        
     elif name == "KIBA":
-        data_dti.binarize(threshold = 12.1, order = 'descending') # 12.1
+        data_dti.binarize(threshold = 12.1, order = 'descending') # 12.1\
+        raw_data = data_dti.get_data()
+        raw_data = df_data_preprocess(raw_data)
         df = data_dti.balanced(oversample = False, seed = 42)
         df = df_data_preprocess(df)
         sample_stat(df)
         df_split = df_fold(df)
+        df_split['raw'] = raw_data
     else:
         logger.error(f"dataset {name} is not supported")
         return
@@ -165,7 +172,7 @@ class MyDataset(Dataset):
 
 if __name__ == '__main__':
     df_split = load(name = "DAVIS")
-    df_split['train'].to_csv("/home/yang/sda/github/IPNET/data/davis_train.csv")
+    df_split['train'].to_csv(f"{base_path}/data/davis_train.csv")
     load(name = "BindingDB_Kd")
     load(name = "KIBA")
     print("done")

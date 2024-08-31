@@ -155,13 +155,27 @@ def setup_seed(seed):
     os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"  # 大于CUDA 10.2 需要设置
     logger.info("seed: %d, random:%.4f, torch random:%.4f, np random:%.4f" %(seed, random.random(), torch.rand(1), np.random.rand(1)))
-    
-def dti_tokenizer(line):
-    vec = []
-    for c in line:
-        ascii = ord(c)
-        vec.append(ascii)
-    return torch.tensor(vec)
+
+def random_slice(vec, limit):
+    vlen = len(vec)
+    if vlen < limit:
+        padding = np.zeros((limit - vlen),dtype=np.int32).tolist()
+        vec = vec + padding
+    else:
+        idx = random.randint(0, vlen - limit)
+        vec = vec[idx:idx + limit]
+    return vec
+
+def dti_tokenizer(lines, limit=100):
+    vecs = []
+    for line in lines:
+        vec = []
+        for c in line:
+            ascii = ord(c)
+            vec.append(ascii)
+        vec = random_slice(vec, limit)
+        vecs.append(vec)
+    return torch.tensor(vecs)
 
 def calc_mse(y_ture, y_pred): # input type is numpy
     return float(np.mean((y_ture - y_pred)**2))
@@ -182,7 +196,7 @@ def calc_r2(y_true, y_pred):
     return float(1 - (u / v))
 
 def evaluate(y_ture, y_pred):
-    CI = calc_cindex(y_ture, y_pred)
+    CI = calc_cindex2(y_ture, y_pred)
     MSE = calc_mse(y_ture, y_pred)
     MAE = calc_mae(y_ture, y_pred)
     R2 = calc_r2(y_ture, y_pred)
@@ -249,7 +263,16 @@ def save_metrics(metrics, file_name, columns=["Type", "MSE", "CI", "MAE", "R2"])
     df.to_csv(path)
     
 if __name__ == '__main__':
-    dataset_name = "DAVIS"
-    file_name = f"IPNet-Seq-{dataset_name}"
-    path = f"/home/yang/sda/github/IPNET/output/csv/{file_name}-Metrics-"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
-    print(path)
+    # dataset_name = "DAVIS"
+    # file_name = f"IPNet-Seq-{dataset_name}"
+    # path = f"/home/yang/sda/github/IPNET/output/csv/{file_name}-Metrics-"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
+    # print(path)
+    lines=[
+        "123456789abcdef",
+        "123456789a",
+        "12345",
+        "123456789ab",
+        "123456789",
+    ]
+    vecs = dti_tokenizer(lines, limit=10)
+    print(vecs)

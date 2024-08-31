@@ -13,6 +13,7 @@ import pandas as pd
 
 from Loader import load, df_nodes, df_encode_edges, df_decode_edges,get_link_labels,df_train_neg_edges
 from Utils import save_metrics, setup_seed, save_model, evaluate
+from Setting import base_path
 
 ## https://blog.csdn.net/python_plus/article/details/136158335
 ## https://github.com/datawhalechina/team-learning-nlp/blob/master/GNN/Markdown%E7%89%88%E6%9C%AC/6-2-%E8%8A%82%E7%82%B9%E9%A2%84%E6%B5%8B%E4%B8%8E%E8%BE%B9%E9%A2%84%E6%B5%8B%E4%BB%BB%E5%8A%A1%E5%AE%9E%E8%B7%B5.md
@@ -42,7 +43,7 @@ class GCN_Net(torch.nn.Module):
         prob_adj = z @ z.t()  # 计算节点特征的内积作为边的预测概率
         return (prob_adj > 0).nonzero(as_tuple=False).t()  # 返回概率大于0的边
 
-def graph_train(df_split, dataset_name="DAVIS", epoch = 10000):
+def graph_train(df_split, dataset_name="DAVIS", epoch = 1000):
     setup_seed(10)
     train_data = df_split['train']
     valid_data = df_split['valid']
@@ -98,7 +99,7 @@ def test(model, test_data, z, idx_dict, device):
 
 if __name__ == '__main__':
     dataset_name = "DAVIS"
-    log_file = logger.add(f"/home/yang/sda/github/IPNET/output/log/IPNet-Graph-{dataset_name}-{str(datetime.date.today())}.log")
+    log_file = logger.add(f"{base_path}output/log/IPNet-Graph-{dataset_name}-{str(datetime.date.today())}.log")
     df_split = load(name = dataset_name)
     model = graph_train(df_split,dataset_name=dataset_name)
     save_model(model, f"IPNet-Graph-{dataset_name}")

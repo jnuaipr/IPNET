@@ -18,6 +18,7 @@ from Loader import load, df_nodes, df_encode_edges, df_decode_edges,get_link_lab
 from Utils import evaluate, setup_seed, dti_tokenizer,check_model, load_model, save_model, save_metrics
 from GCN import GCN_Net, graph_train
 from TransCNN import DTISeqPredictNet, seq_train
+from Setting import base_path
 
 
 class IntelliPredictNet(nn.Module):
@@ -29,7 +30,9 @@ class IntelliPredictNet(nn.Module):
         self.GraphNet = GCN
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.SeqNet = SeqNet
-        self.alpha = alpha
+        self.alpha = nn.Parameter(torch.Tensor([alpha])).to(self.device)
+        self.dlen_limit = 80
+        self.tlen_limit = 1500
     
     def dt_edge_index(self, drugs, targets):
         edge_index_list = [[self.idx_dict[d] for d in drugs], [self.idx_dict[t] for t in targets]]
@@ -37,16 +40,14 @@ class IntelliPredictNet(nn.Module):
         return edge_index
     
     def forward(self, drugs, targets, drug_ids, target_ids):
-        n_dt = len(drugs)
         edge_index = self.dt_edge_index(drug_ids, target_ids).to(self.device)
         z = self.GraphNet.encode(self.x.to(self.device), self.pos_edge_index.to(self.device))
         g_logits = self. GraphNet.decode2(z.to(self.device), edge_index.to(self.device))
-        s_logits = torch.empty(n_dt, dtype=float).to(self.device)
-        for i in range(n_dt):
-            drug = dti_tokenizer(drugs[i])
-            target = dti_tokenizer(targets[i])
-            logit = self.SeqNet(drug.to(self.device), target.to(self.device))
-            s_logits[i] = logit
+
+        drugs = dti_tokenizer(drugs,limit=self.dlen_limit)
+        targets = dti_tokenizer(targets,limit=self.tlen_limit)
+        s_logits = self.SeqNet(drugs.to(self.device), targets.to(self.device))
+
         logits = (1-self.alpha)*g_logits + self.alpha*s_logits
         return logits
 
@@ -90,7 +91,7 @@ def test(model, test_data):
     return MSE, CI, MAE, R2
 
 
-def ipnet_train(df_split, dataset_name="DAVIS", epoch=1, batch_size=8):
+def ipnet_train(df_split, dataset_name="DAVIS", epoch=2, batch_size=8):
     
     ## Setting and Data Preprocessing
     setup_seed(10)
@@ -124,9 +125,9 @@ def ipnet_train(df_split, dataset_name="DAVIS", epoch=1, batch_size=8):
     optimizer = torch.optim.Adam(params=IPNet.parameters(), lr=0.01)
     criterion = torch.nn.BCEWithLogitsLoss()
     IPNet.train()
-    metrics = np.empty((epoch+1,5),dtype=float).tolist()
+    metrics = []
     for e in range(epoch):
-        for dti in tqdm(dti_data, f"epoch{e}"):
+        for dti in tqdm(dti_data, f"epoch{e}/{epoch}"):
             optimizer.zero_grad()  # 清空梯度
             drug_ids= dti[0]
             drugs = dti[1]
@@ -137,16 +138,16 @@ def ipnet_train(df_split, dataset_name="DAVIS", epoch=1, batch_size=8):
             loss = criterion(logits, torch.tensor(labels, dtype=float, device=device)) # 计算损失
             loss.backward()  # 反向传播
             optimizer.step()  # 更新模型参数
-        MSE, CI, MAE, R2 = valid(IPNet, valid_data)
-        metrics[e] = ["valid", MSE, CI, MAE, R2]
+        # MSE, CI, MAE, R2 = valid(IPNet, valid_data)
+        # metrics.append(["valid", MSE, CI, MAE, R2])
     MSE, CI, MAE, R2 = test(IPNet, test_data)
-    metrics[e+1] = ["test", MSE, CI, MAE, R2]
+    metrics.append(["test", MSE, CI, MAE, R2])
     save_metrics(metrics, f"IPNet-{dataset_name}")
     return IPNet
     
 if __name__ == '__main__':
     dataset_name = "DAVIS"
-    log_file = logger.add(f"/home/yang/sda/github/IPNET/output/log/IPNet-{dataset_name}-{str(datetime.date.today())}.log")
+    log_file = logger.add(f"{base_path}output/log/IPNet-{dataset_name}-{str(datetime.date.today())}.log")
     df_split = load(name = dataset_name)
     model = ipnet_train(df_split,dataset_name=dataset_name)
     save_model(model, f"IPNet-{dataset_name}")
