@@ -143,6 +143,7 @@ def ipnet_train(df_split, dataset_name="DAVIS", epoch=2, batch_size=8):
     MSE, CI, MAE, R2 = test(IPNet, test_data)
     metrics.append(["test", MSE, CI, MAE, R2])
     save_metrics(metrics, f"IPNet-{dataset_name}")
+    save_model(model, f"IPNet-{dataset_name}")
     return IPNet
     
 if __name__ == '__main__':
@@ -150,6 +151,5 @@ if __name__ == '__main__':
     log_file = logger.add(f"{base_path}output/log/IPNet-{dataset_name}-{str(datetime.date.today())}.log")
     df_split = load(name = dataset_name)
     model = ipnet_train(df_split,dataset_name=dataset_name)
-    save_model(model, f"IPNet-{dataset_name}")
     logger.remove(log_file)
     print("done")

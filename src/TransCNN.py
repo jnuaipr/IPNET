@@ -16,7 +16,7 @@ import pandas as pd
 from tdc.multi_pred import DTI
 
 from Loader import load, df_nodes, df_encode_edges, df_decode_edges,get_link_labels,df_train_neg_edges, MyDataset,neg_label,pos_label
-from Utils import evaluate, setup_seed, dti_tokenizer, save_model, save_metrics
+from Utils import evaluate, setup_seed, dti_tokenizer, save_model, save_metrics, load_model
 from Setting import base_path
 
 class PositionalEncoding(nn.Module):
@@ -239,6 +239,7 @@ def seq_train(df_split, dataset_name="DAVIS", epoch = 20, batch_size=8,
     MSE, CI, MAE, R2 = test(seq_net, test_data, dlen_limit, tlen_limit, batch_size,device)
     metrics.append(["test",MSE, CI, MAE, R2])
     save_metrics(metrics, f"IPNet-Seq-{dataset_name}")
+    save_model(model, f"IPNet-Seq-{dataset_name}")
     return seq_net
         
 @torch.no_grad()
@@ -277,11 +278,10 @@ def test(model, test_data, dlen_limit, tlen_limit, batch_size,device):
     MSE, CI, MAE, R2 = np.array(metrics).mean(axis=0)
     logger.info(f"[test] MSE:{round(MSE,2)}, CI:{round(CI,2)}, MAE:{round(MAE, 2)}, R2:{round(R2, 2)}")
     return MSE, CI, MAE, R2
-        
+
 if __name__ == '__main__':
     dataset_name = "DAVIS"
     df_split = load(name = dataset_name)
     log_file = logger.add(f"{base_path}output/log/IPNet-Seq-{dataset_name}-{str(datetime.date.today())}.log")
     model = seq_train(df_split, dataset_name=dataset_name)
-    save_model(model, f"IPNet-Seq-{dataset_name}")
     logger.remove(log_file)

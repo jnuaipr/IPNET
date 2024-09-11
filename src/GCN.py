@@ -73,6 +73,7 @@ def graph_train(df_split, dataset_name="DAVIS", epoch = 1000):
     MSE, CI, MAE, R2 = test(model, test_data, z, idx_dict, device)
     metrics[i+1] = ["valid",MSE, CI, MAE, R2]
     save_metrics(metrics, f"IPNet-Graph-{dataset_name}")
+    save_model(model, f"IPNet-Graph-{dataset_name}")
     return model
     
 @torch.no_grad()
@@ -102,6 +103,6 @@ if __name__ == '__main__':
     log_file = logger.add(f"{base_path}output/log/IPNet-Graph-{dataset_name}-{str(datetime.date.today())}.log")
     df_split = load(name = dataset_name)
     model = graph_train(df_split,dataset_name=dataset_name)
-    save_model(model, f"IPNet-Graph-{dataset_name}")
+    
     logger.remove(log_file)
     print('done')

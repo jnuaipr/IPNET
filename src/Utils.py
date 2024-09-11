@@ -276,3 +276,4 @@ if __name__ == '__main__':
     ]
     vecs = dti_tokenizer(lines, limit=10)
     print(vecs)
+    
