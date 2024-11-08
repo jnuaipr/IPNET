@@ -11,6 +11,8 @@ from loguru import logger
 from sklearn.metrics import roc_auc_score
 import pandas as pd
 
+from Setting import base_path
+
 neg_label = 1
 pos_label = 0
 
@@ -238,27 +240,34 @@ def calc_cindex2(y_true, scores):
     return concordant / permissible
 
 def save_model(model,file_name):
-    path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    # path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    path = f"{base_path}output/pt/{file_name}.pt"
     torch.save(model.state_dict(), path)
     logger.info("save %s model parameters done, %s" %(file_name, path))
 
 def load_model(model, file_name):
-    path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    path = f"{base_path}output/pt/{file_name}.pt"
     if os.path.exists(path):
         model.load_state_dict(torch.load(path))
         model.eval()
         logger.info("load %s model parameters done, %s." %(file_name, path))
 
 def check_model(file_name):
-    path = f"/home/yang/sda/github/IPNET/output/pt/{file_name}.pt"
+    path = f"{base_path}output/pt/{file_name}.pt"
     if os.path.exists(path):
         return True
     else:
         return False
 
 def save_metrics(metrics, file_name, columns=["Type", "MSE", "CI", "MAE", "R2"]):
-    path = f"/home/yang/sda/github/IPNET/output/csv/{file_name}_Metrics_"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
+    path = f"{base_path}output/csv/{file_name}_Metrics_"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
     df = pd.DataFrame(metrics)
+    df.columns = columns
+    df.to_csv(path)
+    
+def save_loss(losses, file_name, columns=['loss']):
+    path = f"{base_path}output/csv/{file_name}_loss_"+str(time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime()))+".csv"
+    df = pd.DataFrame(losses)
     df.columns = columns
     df.to_csv(path)
     

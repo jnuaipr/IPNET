@@ -12,7 +12,7 @@ from tqdm import tqdm
 import pandas as pd
 
 from Loader import load, df_nodes, df_encode_edges, df_decode_edges,get_link_labels,df_train_neg_edges
-from Utils import save_metrics, setup_seed, save_model, evaluate
+from Utils import save_metrics, setup_seed, save_model, evaluate, save_loss
 from Setting import base_path
 
 ## https://blog.csdn.net/python_plus/article/details/136158335
@@ -57,6 +57,7 @@ def graph_train(df_split, dataset_name="DAVIS", epoch = 1000):
     criterion = torch.nn.BCEWithLogitsLoss()
     model.train()  # 设置模型为训练模式
     metrics = np.empty((epoch+1,5),dtype=float).tolist()
+    losses = np.empty((epoch+1,1),dtype=float).tolist()
     for i in tqdm(range(epoch), "graph train"):
     # for i in range(epoch):
         optimizer.zero_grad()  # 清空梯度
@@ -70,9 +71,11 @@ def graph_train(df_split, dataset_name="DAVIS", epoch = 1000):
         # logger.info(f"loss:{loss.item()}")
         MSE, CI, MAE, R2 = valid(model, valid_data, z, idx_dict, device)
         metrics[i] = ["valid",MSE, CI, MAE, R2]
+        losses[i] = [loss.item()]
     MSE, CI, MAE, R2 = test(model, test_data, z, idx_dict, device)
     metrics[i+1] = ["valid",MSE, CI, MAE, R2]
     save_metrics(metrics, f"IPNet-Graph-{dataset_name}")
+    save_loss(losses, f"IPNet-Graph-{dataset_name}")
     save_model(model, f"IPNet-Graph-{dataset_name}")
     return model
     
@@ -99,10 +102,9 @@ def test(model, test_data, z, idx_dict, device):
     return MSE, CI, MAE, R2
 
 if __name__ == '__main__':
-    dataset_name = "DAVIS"
+    dataset_name = "KIBA"
     log_file = logger.add(f"{base_path}output/log/IPNet-Graph-{dataset_name}-{str(datetime.date.today())}.log")
     df_split = load(name = dataset_name)
-    model = graph_train(df_split,dataset_name=dataset_name)
-    
+    model = graph_train(df_split,dataset_name=dataset_name,epoch=2000)
     logger.remove(log_file)
     print('done')

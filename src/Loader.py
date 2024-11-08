@@ -117,6 +117,7 @@ def load(name="DAVIS"):
     data_dti = DTI(name = name)
     if name in "DAVIS":
         data_dti.convert_to_log(form = 'binding')
+        logger.info(f"{name}:\n{data_dti.get_data()}")
         data_dti.binarize(threshold = 7, order = 'descending') # 7
         raw_data = data_dti.get_data()
         raw_data = df_data_preprocess(raw_data)
@@ -128,6 +129,7 @@ def load(name="DAVIS"):
 
     elif name == "BindingDB_Kd":
         data_dti.convert_to_log(form = 'binding')
+        logger.info(f"{name}:\n{data_dti.get_data()}")
         data_dti.binarize(threshold = 7.6, order = 'descending') # 7.6
         raw_data = data_dti.get_data()
         raw_data = df_data_preprocess(raw_data)
@@ -138,6 +140,7 @@ def load(name="DAVIS"):
         df_split['raw'] = raw_data
         
     elif name == "KIBA":
+        logger.info(f"{name}:\n{data_dti.get_data()}")
         data_dti.binarize(threshold = 12.1, order = 'descending') # 12.1\
         raw_data = data_dti.get_data()
         raw_data = df_data_preprocess(raw_data)
@@ -172,7 +175,7 @@ class MyDataset(Dataset):
 
 if __name__ == '__main__':
     df_split = load(name = "DAVIS")
-    df_split['train'].to_csv(f"{base_path}/data/davis_train.csv")
+    # df_split['train'].to_csv(f"{base_path}/data/davis_train.csv")
     load(name = "BindingDB_Kd")
     load(name = "KIBA")
     print("done")
